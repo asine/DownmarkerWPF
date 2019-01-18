@@ -1,5 +1,7 @@
 # DownmarkerWPF
 
+[![Build status](https://ci.appveyor.com/api/projects/status/8nyixeikl67jh305/branch/master?svg=true)](https://ci.appveyor.com/project/shiftkey/downmarkerwpf/branch/master)
+
 This codebase contains the [DownmarkerWPF](http://code52.org/DownmarkerWPF/) project, by [Code52](http://code52.org/)
 
 ## About DownmarkerWPF
@@ -11,7 +13,7 @@ Our aim is to create a useably, stylish new version of the project utilising Mic
 ## Install
 [Nightly](http://ginnivan.blob.core.windows.net/markpadnightly/MarkPad.application) | [Stable](http://ginnivan.blob.core.windows.net/markpadrelease/MarkPad.application)
 
-Updates will be installed directly through MarkPad
+Updates will be installed directly through MarkPad.
 
 ## Dependencies
 
@@ -20,9 +22,9 @@ Updates will be installed directly through MarkPad
 
 ## Tools required to develop
 
- - Visual Studio 2012
- - WiX - to generate the installer (optional)
- - 7-Zip - to generate a zip version of the tool (optional)
+ - [Visual Studio](https://www.visualstudio.com/)
+ - [WiX](http://wixtoolset.org/releases/v3.9/stable) - to generate the installer (optional)
+ - [7-Zip](http://www.7-zip.org/download.html) - to generate a zip version of the tool (optional)
 
 ## Contributing
 

@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Xml;
 using Caliburn.Micro;
 using ICSharpCode.AvalonEdit;
@@ -51,6 +52,7 @@ namespace MarkPad.Document.Controls
             CommandBindings.Add(new CommandBinding(FormattingCommands.SetHyperlink, (x, y) => SetHyperlink(), CanEditDocument));
 
             var overtypeMode = new OvertypeMode();
+            var autoPairedCharacters = new AutoPairedCharacters();
 
             editorPreviewKeyDownHandlers = new IHandle<EditorPreviewKeyDownEvent>[] {
                 new CopyLeadingWhitespaceOnNewLine(),
@@ -60,11 +62,16 @@ namespace MarkPad.Document.Controls
                 new HardLineBreak(),
                 overtypeMode,
                 new AutoContinueLists(),
-                new IndentLists(()=>IndentType)
+                new IndentLists(()=>IndentType),
+                autoPairedCharacters
             };
             editorTextEnteringHandlers = new IHandle<EditorTextEnteringEvent>[] {
-                overtypeMode
+                overtypeMode,
+                autoPairedCharacters
             };
+
+            Editor.TextArea.TextView.LinkTextForegroundBrush = new SolidColorBrush(
+                Color.FromRgb(0xA4, 0xA4, 0xA4));
         }
 
         #region public IndentType IndentType
@@ -101,8 +108,8 @@ namespace MarkPad.Document.Controls
         #endregion
 
         #region public double EditorFontSize
-        public static DependencyProperty EditorFontSizeProperty = DependencyProperty.Register("EditorFontSize", typeof (double), typeof (MarkdownEditor), 
-            new PropertyMetadata(default(double), EditorFontSizeChanged));
+        public static DependencyProperty EditorFontSizeProperty = DependencyProperty.Register("EditorFontSize", typeof (double), typeof (MarkdownEditor),
+            new PropertyMetadata(default(double)));
 
 
         public double EditorFontSize
@@ -111,11 +118,6 @@ namespace MarkPad.Document.Controls
             set { SetValue(EditorFontSizeProperty, value); }
         }
         #endregion
-
-        private static void EditorFontSizeChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
-        {
-            ((MarkdownEditor) dependencyObject).Editor.FontSize = (double)dependencyPropertyChangedEventArgs.NewValue;
-        }
 
         void EditorLoaded(object sender, RoutedEventArgs e)
         {
@@ -217,7 +219,7 @@ namespace MarkPad.Document.Controls
         {
             var selectedText = GetSelectedText();
             if (string.IsNullOrWhiteSpace(selectedText)) return;
-            
+
             Editor.SelectedText = selectedText.ToggleBold(!selectedText.IsBold());
         }
 
@@ -265,7 +267,7 @@ namespace MarkPad.Document.Controls
             {
                 var spacer = IndentType == IndentType.Spaces ? Spaces : "\t";
 
-                Editor.SelectedText = spacer + Editor.SelectedText.Replace(Environment.NewLine, Environment.NewLine + spacer);                
+                Editor.SelectedText = spacer + Editor.SelectedText.Replace(Environment.NewLine, Environment.NewLine + spacer);
             }
         }
 
@@ -344,17 +346,33 @@ namespace MarkPad.Document.Controls
                 return;
             }
 
+            var misspelledWord = editor.Document.GetText(misspelledSegment);
+            var contextMenuItems = new List<object>(SpellCheckProvider.GetSpellcheckSuggestions(misspelledWord));
+            contextMenuItems.Add(new Separator());
+            contextMenuItems.Add(new DelegateCommand("Add to dictionary", obj =>
+                {
+                    SpellCheckProvider.AddWordToCustomDictionary(misspelledWord);
+                    Editor.TextArea.TextView.Redraw();
+                }));
+
+            EditorContextMenu.ItemsSource = contextMenuItems;
             EditorContextMenu.Tag = misspelledSegment;
-            EditorContextMenu.ItemsSource = SpellCheckProvider.GetSpellcheckSuggestions(editor.Document.GetText(misspelledSegment));
             e.Handled = false;
         }
 
         void SpellcheckerWordClick(object sender, RoutedEventArgs e)
         {
-            var word = (string)(e.OriginalSource as FrameworkElement).DataContext;
-            var segment = (TextSegment)EditorContextMenu.Tag;
-            Editor.Document.Replace(segment, word);
-         }
+            var clicked = (e.OriginalSource as FrameworkElement).DataContext;
+            if (clicked is ICommand)
+            {
+                ((ICommand)clicked).Execute(null);
+            }
+            else if (clicked is string)
+            {
+                var segment = (TextSegment)EditorContextMenu.Tag;
+                Editor.Document.Replace(segment, (string)clicked);
+            }
+        }
 
         public static readonly DependencyProperty SpellcheckProviderProperty =
             DependencyProperty.Register("SpellCheckProvider", typeof (ISpellCheckProvider), typeof (MarkdownEditor), new PropertyMetadata(default(ISpellCheckProvider)));
@@ -365,12 +383,21 @@ namespace MarkPad.Document.Controls
             set { SetValue(SpellcheckProviderProperty, value); }
         }
 
+        public static readonly DependencyProperty PairedCharsHighlightProviderProperty =
+            DependencyProperty.Register("PairedCharsHighlightProvider", typeof(IPairedCharsHighlightProvider), typeof(MarkdownEditor), new PropertyMetadata(default(IPairedCharsHighlightProvider)));
+
+        public IPairedCharsHighlightProvider PairedCharacterHighlightingProvider
+        {
+            get { return (IPairedCharsHighlightProvider)GetValue(PairedCharsHighlightProviderProperty); }
+            set { SetValue(PairedCharsHighlightProviderProperty, value); }
+        }
+
         public static readonly DependencyProperty IsColorsInvertedProperty =
             DependencyProperty.Register("IsColorsInverted", typeof(bool), typeof(MarkdownEditor));
 
         public bool IsColorsInverted
         {
-            get { return (bool) GetValue(IsColorsInvertedProperty); } 
+            get { return (bool) GetValue(IsColorsInvertedProperty); }
             set { SetValue(IsColorsInvertedProperty, value);}
         }
     }
